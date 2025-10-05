@@ -223,6 +223,72 @@ export type EmployeeAttachment = {
   uploaded_at: string;
 };
 
+export type PublicApplicationsReport = {
+  items: Array<{
+    day: string;
+    status: string;
+    total: string;
+  }>;
+  totals: Array<{
+    status: string;
+    total: string;
+  }>;
+};
+
+export type PublicApplicationsConversion = {
+  summary: {
+    total_logs: string;
+    matched: string;
+    interviews: string;
+    offers: string;
+    hires: string;
+  } | null;
+  status: Array<{ status: string | null; total: string }>;
+};
+
+export type PublicApplicationsResponseTime = {
+  samples: string;
+  avg_hours: string | null;
+  median_hours: string | null;
+  p90_hours: string | null;
+} | null;
+
+export type PublicApplicationsSources = {
+  channels: {
+    breakdown: Array<{
+      day: string;
+      channel: string;
+      total_logs: string;
+      matched: string;
+      interviews: string;
+      offers: string;
+      hires: string;
+    }>;
+    totals: Array<{
+      channel: string;
+      total_logs: string;
+      matched: string;
+      interviews: string;
+      offers: string;
+      hires: string;
+    }>;
+  };
+  platforms: {
+    breakdown: Array<{ day: string; platform: string; total: string }>;
+    totals: Array<{ platform: string; total: string }>;
+  };
+};
+
+export type InvitationReport = {
+  events: Array<{ day: string; sent: string; reused: string; delivered: string }>;
+  acceptance: {
+    invited_users: string;
+    accepted_users: string;
+    avg_hours_to_accept: string | null;
+  } | null;
+  acceptedTimeline: Array<{ day: string; accepted: string }>;
+};
+
 const devUserEmail = import.meta.env.VITE_DEV_USER_EMAIL ?? '';
 const devCompanyId = import.meta.env.VITE_DEV_COMPANY_ID ?? '';
 
@@ -475,6 +541,62 @@ export async function addEmployeeHistory(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchPublicApplicationsReport(params: {
+  start?: string;
+  end?: string;
+  status?: string;
+  company_id?: string;
+} = {}) {
+  const query = new URLSearchParams();
+  if (params.start) query.set('start', params.start);
+  if (params.end) query.set('end', params.end);
+  if (params.status) query.set('status', params.status);
+  if (params.company_id) query.set('company_id', params.company_id);
+  const qs = query.toString();
+  const path = qs ? `/api/reports/public-applications?${qs}` : '/api/reports/public-applications';
+  return apiFetch<PublicApplicationsReport>(path);
+}
+
+export async function fetchPublicApplicationsConversion(params: { start?: string; end?: string; company_id?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.start) query.set('start', params.start);
+  if (params.end) query.set('end', params.end);
+  if (params.company_id) query.set('company_id', params.company_id);
+  const qs = query.toString();
+  const path = qs ? `/api/reports/public-applications/conversion?${qs}` : '/api/reports/public-applications/conversion';
+  return apiFetch<PublicApplicationsConversion>(path);
+}
+
+export async function fetchPublicApplicationsResponseTime(params: { start?: string; end?: string; company_id?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.start) query.set('start', params.start);
+  if (params.end) query.set('end', params.end);
+  if (params.company_id) query.set('company_id', params.company_id);
+  const qs = query.toString();
+  const path = qs ? `/api/reports/public-applications/response-time?${qs}` : '/api/reports/public-applications/response-time';
+  return apiFetch<PublicApplicationsResponseTime>(path);
+}
+
+export async function fetchPublicApplicationsSources(params: { start?: string; end?: string; company_id?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.start) query.set('start', params.start);
+  if (params.end) query.set('end', params.end);
+  if (params.company_id) query.set('company_id', params.company_id);
+  const qs = query.toString();
+  const path = qs ? `/api/reports/public-applications/sources?${qs}` : '/api/reports/public-applications/sources';
+  return apiFetch<PublicApplicationsSources>(path);
+}
+
+export async function fetchInvitationReport(params: { start?: string; end?: string; company_id?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.start) query.set('start', params.start);
+  if (params.end) query.set('end', params.end);
+  if (params.company_id) query.set('company_id', params.company_id);
+  const qs = query.toString();
+  const path = qs ? `/api/reports/invitations?${qs}` : '/api/reports/invitations';
+  return apiFetch<InvitationReport>(path);
 }
 
 export async function createDepartment(payload: { nombre: string; descripcion?: string }) {
@@ -786,3 +908,4 @@ export async function updateUser(id: string, payload: { rol?: UserRole; activo?:
     body: JSON.stringify(payload),
   });
 }
+

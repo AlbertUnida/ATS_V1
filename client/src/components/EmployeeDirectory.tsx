@@ -41,12 +41,15 @@ const STATUS_LABELS: Record<EmployeeStatus, string> = {
   baja: 'Baja',
 };
 
+const CURRENCY_OPTIONS = ['PYG', 'USD', 'BRL', 'ARS', 'EUR'];
+
 const initialForm: CreateEmployeePayload = {
   first_name: '',
   last_name: '',
   hire_date: '',
   employment_type: 'tiempo_completo',
   status: 'activo',
+  salary_currency: 'PYG',
 };
 
 function formatDate(value: string | null | undefined) {
@@ -104,18 +107,18 @@ export default function EmployeeDirectory() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [attachmentSaving, setAttachmentSaving] = useState(false);
 
-  const [historyForm, setHistoryForm] = useState({
-    started_at: '',
-    ended_at: '',
-    job_title: '',
-    department_id: '',
-    manager_id: '',
-    employment_type: '' as '' | EmploymentType,
-    salary_amount: '',
-    salary_currency: '',
-    salary_period: '',
-    note: '',
-  });
+const [historyForm, setHistoryForm] = useState({
+  started_at: '',
+  ended_at: '',
+  job_title: '',
+  department_id: '',
+  manager_id: '',
+  employment_type: '' as '' | EmploymentType,
+  salary_amount: '',
+  salary_currency: '',
+  salary_period: '',
+  note: '',
+});
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -274,7 +277,7 @@ export default function EmployeeDirectory() {
         manager_id: historyForm.manager_id || undefined,
         employment_type: (historyForm.employment_type || undefined) as EmploymentType | undefined,
         salary_amount: historyForm.salary_amount ? Number(historyForm.salary_amount) : undefined,
-        salary_currency: historyForm.salary_currency.trim() || undefined,
+        salary_currency: historyForm.salary_currency ? historyForm.salary_currency.toUpperCase().trim() : undefined,
         salary_period: historyForm.salary_period.trim() || undefined,
         note: historyForm.note.trim() || undefined,
       });
@@ -437,6 +440,10 @@ export default function EmployeeDirectory() {
         setCreateError('El salario debe ser un número.');
         return;
       }
+    }
+
+    if (payload.salary_currency) {
+      payload.salary_currency = payload.salary_currency.toUpperCase().trim();
     }
 
     setCreateLoading(true);
@@ -833,19 +840,23 @@ export default function EmployeeDirectory() {
                     }
                   />
                 </label>
-                <label style={{ width: 90, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ width: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   Moneda
-                  <input
-                    type="text"
-                    maxLength={3}
-                    value={createForm.salary_currency ?? ''}
+                  <select
+                    value={createForm.salary_currency ?? 'PYG'}
                     onChange={(event) =>
                       setCreateForm((prev) => ({
                         ...prev,
-                        salary_currency: event.target.value.toUpperCase(),
+                        salary_currency: event.target.value as CreateEmployeePayload['salary_currency'],
                       }))
                     }
-                  />
+                  >
+                    {CURRENCY_OPTIONS.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   Periodicidad
@@ -1047,16 +1058,20 @@ function HistorySection({ detail, historyForm, setHistoryForm, onSubmit, saving,
                 onChange={(event) => setHistoryForm((prev) => ({ ...prev, salary_amount: event.target.value }))}
               />
             </label>
-            <label style={{ width: 80, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ width: 120, display: 'flex', flexDirection: 'column', gap: 4 }}>
               Moneda
-              <input
-                type="text"
-                maxLength={3}
+              <select
                 value={historyForm.salary_currency}
                 onChange={(event) =>
                   setHistoryForm((prev) => ({ ...prev, salary_currency: event.target.value.toUpperCase() }))
                 }
-              />
+              >
+                {['', ...CURRENCY_OPTIONS].map((currency) => (
+                  <option key={currency || 'none'} value={currency}>
+                    {currency || '(sin cambio)'}
+                  </option>
+                ))}
+              </select>
             </label>
             <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
               Periodicidad

@@ -10,6 +10,7 @@ import UserInvitationManager from './components/UserInvitationManager';
 import AcceptInvitationPage from './pages/AcceptInvitation';
 import EmployeeDirectory from './components/EmployeeDirectory';
 import PublicJobsPage from './pages/PublicJobs';
+import PublicApplicationsReport from './components/PublicApplicationsReport';
 
 type DashboardContext = {
   reloadKey: number;
@@ -63,6 +64,7 @@ function Dashboard() {
   return (
     <>
       {canManageUsers && <UserInvitationManager />}
+      {canManageUsers && <PublicApplicationsReport />}
       <EmployeeDirectory />
       <DepartmentManager onCreated={handleDepartmentCreated} />
       <JobForm onCreated={handleJobCreated} departmentsVersion={departmentsVersion} />
