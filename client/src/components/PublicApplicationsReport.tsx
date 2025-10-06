@@ -5,11 +5,13 @@ import {
   fetchPublicApplicationsResponseTime,
   fetchPublicApplicationsSources,
   fetchInvitationReport,
+  fetchDemoStatus,
   type PublicApplicationsReport,
   type PublicApplicationsConversion,
   type PublicApplicationsResponseTime,
   type PublicApplicationsSources,
   type InvitationReport,
+  type DemoStatus,
 } from '../api';
 
 type DateFilters = {
@@ -58,6 +60,7 @@ export default function PublicApplicationsReport() {
   const [responseTime, setResponseTime] = useState<PublicApplicationsResponseTime | null>(null);
   const [sources, setSources] = useState<PublicApplicationsSources | null>(null);
   const [invitationReport, setInvitationReport] = useState<InvitationReport | null>(null);
+  const [demoStatus, setDemoStatus] = useState<DemoStatus | null>(null);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }), []);
   const decimalFormatter = useMemo(() => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }), []);
@@ -65,7 +68,7 @@ export default function PublicApplicationsReport() {
 
   const loadData = useCallback(async () => {
     if (filters.start && filters.end && filters.start > filters.end) {
-      setError('El rango de fechas no es válido.');
+      setError('El rango de fechas no es valido.');
       return;
     }
 
@@ -77,12 +80,13 @@ export default function PublicApplicationsReport() {
         ...(filters.end ? { end: filters.end } : {}),
       };
 
-      const [reportData, conversionData, responseData, sourcesData, invitationData] = await Promise.all([
+      const [reportData, conversionData, responseData, sourcesData, invitationData, demoData] = await Promise.all([
         fetchPublicApplicationsReport(params),
         fetchPublicApplicationsConversion(params),
         fetchPublicApplicationsResponseTime(params),
         fetchPublicApplicationsSources(params),
         fetchInvitationReport(params),
+        fetchDemoStatus(),
       ]);
 
       setPublicReport(reportData);
@@ -90,8 +94,9 @@ export default function PublicApplicationsReport() {
       setResponseTime(responseData);
       setSources(sourcesData);
       setInvitationReport(invitationData);
+      setDemoStatus(demoData);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'No pudimos obtener las métricas.';
+      const message = err instanceof Error ? err.message : 'No pudimos obtener las metricas.';
       setError(message);
     } finally {
       setLoading(false);
@@ -107,6 +112,64 @@ export default function PublicApplicationsReport() {
     void loadData();
   };
 
+  const handleExportCsv = () => {
+    if (!publicReport && !conversionSummary && !responseTime && !sources && !invitationReport) {
+      return;
+    }
+    const rows: string[][] = [];
+    const pushRow = (section: string, metric: string, value: string | number | null | undefined) => {
+      rows.push([section, metric, value !== null && value !== undefined ? String(value) : '']);
+    };
+    pushRow('Resumen', 'Total logs', totalPublicLogs);
+    publicReport?.totals.forEach((item) => {
+      pushRow('Resumen', `Status ${item.status}`, item.total);
+    });
+    if (conversionSummary) {
+      pushRow('Conversion', 'Logs', conversionSummary.total_logs);
+      pushRow('Conversion', 'Matching', conversionSummary.matched);
+      pushRow('Conversion', 'Entrevistas', conversionSummary.interviews);
+      pushRow('Conversion', 'Ofertas', conversionSummary.offers);
+      pushRow('Conversion', 'Contratados', conversionSummary.hires);
+    }
+    conversion?.status.forEach((item) => {
+      pushRow('Conversion estados', item.status ?? 'sin_match', item.total);
+    });
+    if (responseTime) {
+      pushRow('Tiempo respuesta', 'Muestras', responseTime.samples);
+      pushRow('Tiempo respuesta', 'Promedio horas', responseTime.avg_hours ?? '');
+      pushRow('Tiempo respuesta', 'Mediana horas', responseTime.median_hours ?? '');
+      pushRow('Tiempo respuesta', 'Percentil 90 horas', responseTime.p90_hours ?? '');
+    }
+    channelTotals.forEach((item) => {
+      pushRow('Canal', `${item.channel} logs`, item.total_logs);
+      pushRow('Canal', `${item.channel} matching`, item.matched);
+      pushRow('Canal', `${item.channel} entrevistas`, item.interviews);
+      pushRow('Canal', `${item.channel} ofertas`, item.offers);
+      pushRow('Canal', `${item.channel} contrataciones`, item.hires);
+    });
+    platformTotals.forEach((item) => {
+      pushRow('Plataforma', item.platform, item.total);
+    });
+    if (invitationReport?.acceptance) {
+      pushRow('Invitaciones', 'Usuarios invitados', invitationReport.acceptance.invited_users);
+      pushRow('Invitaciones', 'Usuarios activos', invitationReport.acceptance.accepted_users);
+      pushRow('Invitaciones', 'Horas promedio aceptacion', invitationReport.acceptance.avg_hours_to_accept ?? '');
+    }
+    if (rows.length === 0) {
+      return;
+    }
+    const csvLines = [['Seccion', 'Metrica', 'Valor'], ...rows].map((line) => line.map((value) => `"${String(value).replace(/"/g, '"')}"`).join(','));
+    const csvContent = csvLines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `talentflow-metrics-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
   const handleReset = () => {
     setFilters({ start: defaultStart, end: defaultEnd });
   };
@@ -125,13 +188,15 @@ export default function PublicApplicationsReport() {
 
   const channelTotals = sources?.channels.totals ?? [];
   const platformTotals = sources?.platforms.totals ?? [];
+  const demoSeededAt = demoStatus?.executed_at ? new Date(demoStatus.executed_at) : null;
 
   return (
     <section style={{ marginBottom: '2rem', border: '1px solid #ddd', borderRadius: 12, padding: '1.5rem', backgroundColor: '#fafafa' }}>
       <header style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <h2 style={{ margin: 0 }}>Radar de métricas del portal público</h2>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0 }}>Radar de metricas del portal publico</h2>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
             <label style={{ fontSize: 14 }}>
               Desde
               <input
@@ -151,17 +216,37 @@ export default function PublicApplicationsReport() {
               />
             </label>
             <button type="submit" disabled={loading}>
-              {loading ? 'Actualizando…' : 'Aplicar'}
+              {loading ? 'Actualizando...' : 'Aplicar'}
             </button>
             <button type="button" onClick={handleReset} disabled={loading}>
               Reiniciar
             </button>
-          </form>
+            </form>
+            <button type="button" onClick={handleExportCsv} disabled={loading}>
+              Descargar CSV
+            </button>
+          </div>
         </div>
         <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
-          Observa la conversión del portal hacia el pipeline interno, los tiempos de reacción, los canales con mejor rendimiento y la efectividad de invitaciones.
+          Observa la conversion del portal hacia el pipeline interno, los tiempos de reaccion, los canales con mejor rendimiento y la efectividad de invitaciones.
         </p>
       </header>
+      {demoSeededAt && (
+        <div
+          style={{
+            marginBottom: '1.5rem',
+            padding: '0.75rem 1rem',
+            borderRadius: 8,
+            border: '1px solid #e0f2ff',
+            backgroundColor: '#f2f9ff',
+            color: '#0b5394',
+            fontSize: 14,
+          }}
+        >
+          Dataset demo cargado el {dateFormatter.format(demoSeededAt)}. Ejecuta <code>npm run demo:preview</code> para refrescarlo.
+        </div>
+      )}
+
 
       {error && (
         <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', border: '1px solid #f5c2c7', backgroundColor: '#f8d7da', borderRadius: 8, color: '#842029' }}>
@@ -169,12 +254,12 @@ export default function PublicApplicationsReport() {
         </div>
       )}
 
-      {loading && !publicReport ? <p>Cargando métricas…</p> : null}
+      {loading && !publicReport ? <p>Cargando metricas...</p> : null}
 
       {!loading && publicReport && (
         <div style={{ display: 'grid', gap: 16 }}>
           <section style={{ border: '1px solid #e5e5e5', borderRadius: 10, padding: '1rem' }}>
-            <h3 style={{ marginTop: 0 }}>Resumen del portal público</h3>
+            <h3 style={{ marginTop: 0 }}>Resumen del portal publico</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ minWidth: 180 }}>
                 <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Total registros</p>
@@ -189,11 +274,11 @@ export default function PublicApplicationsReport() {
             </div>
             {publicReport.items.length > 0 && (
               <div style={{ marginTop: '1rem' }}>
-                <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Últimos eventos (máx. 12)</p>
+                <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Ultimos eventos (max. 12)</p>
                 <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Día</th>
+                      <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Dia</th>
                       <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Estado</th>
                       <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Total</th>
                     </tr>
@@ -213,7 +298,7 @@ export default function PublicApplicationsReport() {
           </section>
 
           <section style={{ border: '1px solid #e5e5e5', borderRadius: 10, padding: '1rem' }}>
-            <h3 style={{ marginTop: 0 }}>Conversión a pipeline interno</h3>
+            <h3 style={{ marginTop: 0 }}>Conversion a pipeline interno</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               <MetricCard title="Logs" value={numberFormatter.format(totalLogs)} subtitle="Ingresos desde portal" />
               <MetricCard title="Con matching" value={numberFormatter.format(matched)} subtitle={percentage(matched, totalLogs)} />
@@ -229,7 +314,7 @@ export default function PublicApplicationsReport() {
                     <tr>
                       <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Estado</th>
                       <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Total</th>
-                      <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Participación</th>
+                      <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Participacion</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,13 +335,13 @@ export default function PublicApplicationsReport() {
           </section>
 
           <section style={{ border: '1px solid #e5e5e5', borderRadius: 10, padding: '1rem' }}>
-            <h3 style={{ marginTop: 0 }}>Tiempo de primera acción</h3>
+            <h3 style={{ marginTop: 0 }}>Tiempo de primera accion</h3>
             {responseTime ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
                 <MetricCard title="Muestras" value={numberFormatter.format(toNumber(responseTime.samples))} subtitle="Postulaciones con movimiento" />
                 <MetricCard title="Promedio" value={`${decimalFormatter.format(toNumber(responseTime.avg_hours))} h`} subtitle="Horas hasta primer cambio" />
                 <MetricCard title="Mediana" value={`${decimalFormatter.format(toNumber(responseTime.median_hours))} h`} subtitle="P50" />
-                <MetricCard title="Percentil 90" value={`${decimalFormatter.format(toNumber(responseTime.p90_hours))} h`} subtitle="Casos más lentos" />
+                <MetricCard title="Percentil 90" value={`${decimalFormatter.format(toNumber(responseTime.p90_hours))} h`} subtitle="Casos mas lentos" />
               </div>
             ) : (
               <p style={{ margin: 0 }}>Sin datos suficientes para calcular tiempos.</p>
@@ -264,7 +349,7 @@ export default function PublicApplicationsReport() {
           </section>
 
           <section style={{ border: '1px solid #e5e5e5', borderRadius: 10, padding: '1rem' }}>
-            <h3 style={{ marginTop: 0 }}>Origen de tráfico y canales</h3>
+            <h3 style={{ marginTop: 0 }}>Origen de trafico y canales</h3>
             {channelTotals.length > 0 ? (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
@@ -293,16 +378,16 @@ export default function PublicApplicationsReport() {
                 </table>
               </div>
             ) : (
-              <p style={{ margin: 0 }}>Aún no hay datos de canales.</p>
+              <p style={{ margin: 0 }}>Aun no hay datos de canales.</p>
             )}
 
             {sources?.channels.breakdown.length ? (
               <div style={{ marginTop: '1rem' }}>
-                <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Actividad diaria por canal (máx. 12 filas)</p>
+                <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Actividad diaria por canal (max. 12 filas)</p>
                 <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Día</th>
+                      <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Dia</th>
                       <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Canal</th>
                       <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Logs</th>
                       <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Matching</th>
@@ -362,11 +447,11 @@ export default function PublicApplicationsReport() {
 
                 {invitationReport.events.length ? (
                   <div style={{ marginTop: '1rem' }}>
-                    <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Evolución de envíos (máx. 10)</p>
+                    <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Evolucion de envios (max. 10)</p>
                     <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
                       <thead>
                         <tr>
-                          <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Día</th>
+                          <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Dia</th>
                           <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Enviadas</th>
                           <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Reutilizadas</th>
                           <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Entregadas</th>
@@ -388,11 +473,11 @@ export default function PublicApplicationsReport() {
 
                 {invitationReport.acceptedTimeline.length ? (
                   <div style={{ marginTop: '1rem' }}>
-                    <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Activaciones por día (máx. 10)</p>
+                    <p style={{ margin: 0, color: '#777', fontSize: 13 }}>Activaciones por dia (max. 10)</p>
                     <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
                       <thead>
                         <tr>
-                          <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Día</th>
+                          <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Dia</th>
                           <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Activaciones</th>
                         </tr>
                       </thead>

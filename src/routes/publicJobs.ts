@@ -364,6 +364,11 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
   const jobId = idParse.data;
   const ip = getClientIp(req);
   const userAgent = req.headers["user-agent"]?.toString() ?? null;
+  const sourceDetailsPayload = {
+    channel: "portal_publico",
+    ip,
+    userAgent,
+  };
   let recaptchaScore: number | null = null;
 
   try {
@@ -375,6 +380,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
         email: payload.email,
         ip,
         userAgent,
+        source: "portal_publico",
+        sourceDetails: sourceDetailsPayload,
         status: "rate_limited",
       });
       return res.status(429).json({ message: "Demasiados intentos. Vuelve a intentarlo más tarde." });
@@ -390,6 +397,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
         email: payload.email,
         ip,
         userAgent,
+        source: "portal_publico",
+        sourceDetails: sourceDetailsPayload,
         status: "captcha_failed",
         error: "missing_token",
       });
@@ -409,6 +418,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
           email: payload.email,
           ip,
           userAgent,
+          source: "portal_publico",
+          sourceDetails: sourceDetailsPayload,
           status: "captcha_failed",
           error: verification.error,
           recaptchaScore,
@@ -449,6 +460,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
         email: payload.email,
         ip,
         userAgent,
+        source: "portal_publico",
+        sourceDetails: sourceDetailsPayload,
         status: "invalid",
         error: "job_not_found",
         recaptchaScore,
@@ -464,6 +477,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
         email: payload.email,
         ip,
         userAgent,
+        source: "portal_publico",
+        sourceDetails: sourceDetailsPayload,
         status: "job_closed",
         recaptchaScore,
       });
@@ -471,11 +486,7 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
     }
 
     const sanitizedMessage = payload.mensaje?.trim() ? payload.mensaje.trim() : null;
-    const sourceDetails = JSON.stringify({
-      channel: "portal_publico",
-      ip,
-      userAgent,
-    });
+    const sourceDetailsJson = JSON.stringify(sourceDetailsPayload);
 
     const applicationResult = await createOrUpdateApplication(client, {
       jobId,
@@ -491,7 +502,7 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
       },
       estado: "Nuevo",
       source: "portal_publico",
-      sourceDetails,
+      sourceDetails: sourceDetailsJson,
       salarioExpectativa: payload.salario_expectativa ?? null,
       moneda: payload.moneda?.trim().toUpperCase() ?? null,
       changedBy: null,
@@ -545,6 +556,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
       email: payload.email,
       ip,
       userAgent,
+      source: "portal_publico",
+      sourceDetails: sourceDetailsPayload,
       status: applicationResult.wasExisting ? "duplicate" : "received",
       recaptchaScore,
     });
@@ -565,6 +578,8 @@ router.post("/public/jobs/:id/apply", async (req, res) => {
       email: payload.email,
       ip,
       userAgent,
+      source: "portal_publico",
+      sourceDetails: sourceDetailsPayload,
       status: "error",
       error: (error as Error)?.message ?? String(error),
       recaptchaScore,

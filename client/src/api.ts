@@ -289,6 +289,10 @@ export type InvitationReport = {
   acceptedTimeline: Array<{ day: string; accepted: string }>;
 };
 
+export type DemoStatus = {
+  executed_at: string | null;
+};
+
 const devUserEmail = import.meta.env.VITE_DEV_USER_EMAIL ?? '';
 const devCompanyId = import.meta.env.VITE_DEV_COMPANY_ID ?? '';
 
@@ -597,6 +601,10 @@ export async function fetchInvitationReport(params: { start?: string; end?: stri
   const qs = query.toString();
   const path = qs ? `/api/reports/invitations?${qs}` : '/api/reports/invitations';
   return apiFetch<InvitationReport>(path);
+}
+
+export async function fetchDemoStatus() {
+  return apiFetch<DemoStatus>('/api/reports/demo-status');
 }
 
 export async function createDepartment(payload: { nombre: string; descripcion?: string }) {

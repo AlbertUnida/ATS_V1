@@ -19,16 +19,24 @@ type LogParams = {
   status: LogStatus;
   recaptchaScore?: number | null;
   error?: string | null;
+  source?: string | null;
+  sourceDetails?: Record<string, unknown> | string | null;
 };
 
 export async function logPublicApplicationAttempt(params: LogParams): Promise<void> {
   if (!LOG_ENABLED) return;
+  const sourceDetails =
+    params.sourceDetails === undefined || params.sourceDetails === null
+      ? null
+      : typeof params.sourceDetails === "string"
+        ? params.sourceDetails
+        : JSON.stringify(params.sourceDetails);
   try {
     await pool.query(
       `
         INSERT INTO public_applications_log
-          (job_id, candidate_email, status, error_message, ip, user_agent, recaptcha_score)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (job_id, candidate_email, status, error_message, ip, user_agent, recaptcha_score, source, source_details)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         params.jobId,
@@ -38,6 +46,8 @@ export async function logPublicApplicationAttempt(params: LogParams): Promise<vo
         params.ip ?? null,
         params.userAgent ?? null,
         typeof params.recaptchaScore === "number" ? params.recaptchaScore : null,
+        params.source ?? null,
+        sourceDetails,
       ],
     );
   } catch (error) {

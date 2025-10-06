@@ -1,37 +1,38 @@
 {
-    "name":  "ats_v1",
-    "version":  "1.0.0",
-    "main":  "index.js",
-    "license":  "ISC",
-    "scripts":  {
-                    "dev":  "ts-node-dev --respawn --transpile-only src/server.ts",
-                    "build":  "tsc",
-                    "start":  "node dist/server.js",
-                    "db:migrate":  "node scripts/migrate.js",
-                    "db:seed:users":  "node scripts/seed-users.js"
-                },
-    "keywords":  [
-
-                 ],
-    "author":  "",
-    "description":  "",
-    "dependencies":  {
-                         "bcryptjs":  "^3.0.2",
-                         "dotenv":  "^17.2.2",
-                         "express":  "^5.1.0",
-                         "jsonwebtoken":  "^9.0.2",
-                         "pg":  "^8.16.3",
-                         "zod":  "^4.1.9",
-                         "nodemailer":  "^6.9.11"
-                     },
-    "devDependencies":  {
-                            "@types/express":  "^5.0.3",
-                            "@types/jsonwebtoken":  "^9.0.10",
-                            "@types/node":  "^24.5.2",
-                            "@types/pg":  "^8.10.9",
-                            "@vitejs/plugin-react":  "^4.7.0",
-                            "ts-node-dev":  "^2.0.0",
-                            "typescript":  "^5.9.2",
-                            "@types/nodemailer":  "^6.4.13"
-                        }
+    "name": "ats_v1",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "ISC",
+    "scripts": {
+        "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "db:migrate": "node scripts/migrate.js",
+        "db:seed:users": "node scripts/seed-users.js",
+        "demo:seed": "node scripts/enrich-demo-data.js",
+        "demo:preview": "npm run demo:seed && concurrently \"npm run dev\" \"npm run dev --prefix client\""
+    },
+    "keywords": [],
+    "author": "",
+    "description": "",
+    "dependencies": {
+        "bcryptjs": "^3.0.2",
+        "dotenv": "^17.2.2",
+        "express": "^5.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "nodemailer": "^6.9.11",
+        "pg": "^8.16.3",
+        "zod": "^4.1.9"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.3",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^24.5.2",
+        "@types/nodemailer": "^6.4.13",
+        "@types/pg": "^8.10.9",
+        "@vitejs/plugin-react": "^4.7.0",
+        "concurrently": "^9.2.1",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.9.2"
+    }
 }
