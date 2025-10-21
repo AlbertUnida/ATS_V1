@@ -13,8 +13,8 @@ This dataset seeds the minimal activity needed for the "Radar de metricas del po
 | sofia.analytics@example.com | Analista de Datos | 687f9817-4447-4a5a-80fb-334f5d4cf919 | 2025-09-29 08:20 | Nuevo | Prior rate limit on 2025-09-28 |
 | jorge.data@example.com | Analista de Datos | 687f9817-4447-4a5a-80fb-334f5d4cf919 | 2025-09-30 09:40 | Nuevo | Prior rate limit on 2025-09-29 |
 
-- public_applications_log includes received, rate_limited and duplicate entries from 15-Sep to 1-Oct.
-- application_stage_history records the stage transitions listed above.
+- `public_applications_log` includes received, rate_limited and duplicate entries from 15-Sep to 1-Oct with `source = 'portal_publico'`.
+- `application_stage_history` records the stage transitions listed above.
 
 ## 2. Internal invitations
 
@@ -36,4 +36,5 @@ These rows feed the invitation activation metrics.
 ## 4. Resetting
 
 - To reset, restore the database from seeds/dumps.
+- The enrichment script registers the execution timestamp in `demo_runs`.
 - The enrichment script is idempotent; running it again updates existing rows without duplicating data.

@@ -1,41 +1,41 @@
-# Configuración de Entorno
+# Configuracion de entorno
 
-## Backend (`.env` raíz)
+## Backend (`.env` en la raiz)
 
-| Variable | Descripción |
+| Variable | Descripcion |
 | --- | --- |
-| `PORT` | Puerto del backend Express (default 3000). |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Credenciales de PostgreSQL. |
-| `JWT_SECRET`, `JWT_EXPIRES_IN` | Firma y expiración del token JWT. |
-| `DEV_DEFAULT_USER_EMAIL` | Correo utilizado por el middleware tenant en desarrollo cuando no hay token. |
-| `APP_BASE_URL` | URL base del frontend interno; se usa para construir enlaces (invitaciones, notificaciones). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `SMTP_FROM` | Configuración de correo para invitaciones y notificaciones. |
-| `PUBLIC_APPLICATIONS_ENABLED` | Controla el acceso a los endpoints públicos (`true` por defecto). |
-| `PUBLIC_APPLICATIONS_RATE_LIMIT` | Número de intentos por IP cada 10 minutos para el portal público (default `5`). |
-| `PUBLIC_CAPTCHA_REQUIRED` | Habilita la validación de captcha en el portal público (default `true`). |
-| `RECAPTCHA_SECRET_KEY` | Clave secreta de Google reCAPTCHA v3. Obligatoria si `PUBLIC_CAPTCHA_REQUIRED` es `true`. |
-| `RECAPTCHA_MIN_SCORE` | Puntaje mínimo aceptado para el captcha (default `0.5`). |
-| `PUBLIC_LOG_APPLICATIONS` | Activa la escritura en `public_applications_log` (default `true`). |
-| `PUBLIC_PORTAL_URL` | URL pública del portal de vacantes (si se omite, se usa `APP_BASE_URL`). |
-| `EMPLOYEE_MANAGER_MUST_MATCH_DEPARTMENT` *(futuro)* | Bandera para validaciones adicionales entre manager y departamento (actualmente implícita). |
+| `PORT` | Puerto HTTP para el servidor Express (por defecto 3000). |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Credenciales de conexion a PostgreSQL. |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Firma y vencimiento del JWT emitido por `/api/auth/login`. Cambiar en produccion. |
+| `DEV_DEFAULT_USER_EMAIL` | Correo usado por `tenantContext` cuando no llega token en desarrollo (fallback local). |
+| `APP_BASE_URL` | URL base del panel interno; se usa en enlaces de invitacion, notificaciones y correos. |
+| `PUBLIC_PORTAL_URL` | URL publica del portal de vacantes. Si no se define se reutiliza `APP_BASE_URL`. |
+| `PUBLIC_APPLICATIONS_ENABLED` | Habilita o bloquea los endpoints bajo `/public/*`. Valor por defecto: `true`. |
+| `PUBLIC_APPLICATIONS_RATE_LIMIT` | Intentos maximos por IP cada 10 minutos en el portal (default `5`). |
+| `PUBLIC_CAPTCHA_REQUIRED` | Obliga a validar reCAPTCHA antes de aceptar postulaciones (default `true`). |
+| `RECAPTCHA_SECRET_KEY` | Clave secreta de reCAPTCHA v3. Debe configurarse cuando el captcha es obligatorio. |
+| `RECAPTCHA_MIN_SCORE` | Puntaje minimo aceptado para reCAPTCHA (default `0.5`). |
+| `PUBLIC_LOG_APPLICATIONS` | Permite escribir auditoria en `public_applications_log` (default `true`). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `SMTP_FROM` | Parametros para enviar correos mediante SMTP. Si falta alguno, los correos se registran en consola. |
 
-## Frontend (`client/.env`)
+## Frontend (`client/.env.development`)
 
-| Variable | Descripción |
+| Variable | Descripcion |
 | --- | --- |
-| `VITE_DEV_USER_EMAIL`, `VITE_DEV_COMPANY_ID` | Headers de desarrollo cuando no existe sesión. |
-| `VITE_RECAPTCHA_SITE_KEY` | Clave pública de reCAPTCHA (necesaria si el backend requiere captcha). |
+| `VITE_DEV_USER_EMAIL`, `VITE_DEV_COMPANY_ID` | Headers que Vite inyecta en desarrollo cuando no hay sesion activa. |
+| `VITE_RECAPTCHA_SITE_KEY` | Clave publica de reCAPTCHA v3. Requerida si el backend exige validacion de captcha. |
 
-## Tablas/Índices Relevantes
+## Scripts y utilidades
 
-- `employees`, `employee_job_history`, `employee_notes`, `employee_attachments`: núcleo del directorio interno. La migración `006_employees.sql` crea índices para búsquedas por empresa, departamento y manager.
-- `public_applications_log`: almacena auditoría del portal público. Índices por `job_id`, `status` y `created_at` facilitan reportes (`GET /api/reports/public-applications`).
+| Variable | Descripcion |
+| --- | --- |
+| `API_BASE_URL` | URL del backend que usa `npm run demo:seed` para crear datos via API (default `http://localhost:3000`). |
+| `SEED_USER_PASSWORD` | Contrasena aplicada por `npm run db:seed:users`. Si se omite se usa `TalentFlow2025!`. |
 
-## Comandos útiles
+## Comandos utiles
 
 ```bash
-npm run db:migrate    # Aplica las migraciones
-npm run build         # Verifica compilación del backend
-cd client && npm run build   # Verifica compilación del frontend
+npm run db:migrate      # Ejecuta migraciones SQL
+npm run build           # Valida compilacion del backend
+cd client && npm run build   # Valida compilacion del frontend
 ```
-
